@@ -1,6 +1,7 @@
 // ****** DEPENDENCIES *********
 const router = require("express").Router();
 const axios = require("axios");
+
 const { google } = require('googleapis');
 const { OAuth2Client } = require('google-auth-library');
 // const http = require('http');
@@ -27,6 +28,7 @@ const SCOPES = [
   'https://www.googleapis.com/auth/gmail.settings.basic',
   'https://www.googleapis.com/auth/gmail.modify'
 ];
+
 
 // ********* COMMUNICATION STEP 1: POST FROM FE **********
 
