@@ -74,9 +74,10 @@ public
 
 #Tagger 
 # Credentials
-credentials.json
+
+# credentials.json
 # Token
-token.json
+# token.json
 
 
 
