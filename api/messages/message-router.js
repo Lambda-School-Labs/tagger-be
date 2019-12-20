@@ -1,52 +1,45 @@
 // ****** DEPENDENCIES *********
 const router = require("express").Router();
 const axios = require("axios");
-
-const { google } = require('googleapis');
-const { OAuth2Client } = require('google-auth-library');
+const {google} = require('googleapis');
+// const {OAuth2Client} = require('google-auth-library');
 // const http = require('http');
-const url = require('url');
-const open = require('open');
-const destroyer = require('server-destroy');
+// const url = require('url');
+// const open = require('open');
+// const destroyer = require('server-destroy');
+// const readline = require('readline');
 require('dotenv').config();
 const fs = require('fs');
-const readline = require('readline');
-const credentials = require('../../credentials.json');
-const rateLimit = require('axios-rate-limit');
+const credentials = require('../../credentials.json')
 
 
 // ******* GLOBAL VARIABLES **********
-let messageArray = [];
-let responseLabels = "";
-let messages = "";
-const http = rateLimit(axios.create(), { maxRequests: 3, perMilliseconds: 1000, maxRPS: 3 });
-http.getMaxRPS();
+// let messageArray = [];
 
 // ***** SCOPES ******
-const SCOPES = [
-  'https://www.googleapis.com/auth/gmail.readonly',
-  'https://www.googleapis.com/auth/gmail.settings.basic',
-  'https://www.googleapis.com/auth/gmail.modify'
-];
-
+// const SCOPES = [
+//   'https://www.googleapis.com/auth/gmail.readonly',
+//   'https://www.googleapis.com/auth/gmail.settings.basic',
+//   'https://www.googleapis.com/auth/gmail.modify'
+// ]; 
 
 // ********* COMMUNICATION STEP 1: POST FROM FE **********
 
 router.post('/postfe', (req, res) => {
-
+  
   let code = req.body.code;
   console.log("code: ", code);
 
   res.status(200).json("TEST RESPONSE");
 
-  const { client_secret, client_id, redirect_uris } = credentials.web;
+  const {client_secret, client_id, redirect_uris} = credentials.web;
   axios.post('https://www.googleapis.com/oauth2/v4/token', {
-    code: code,
-    client_id: client_id,
-    client_secret: client_secret,
-    redirect_uri: "postmessage",
-    grant_type: "authorization_code"
-  })
+      code: code,
+      client_id: client_id,
+      client_secret: client_secret,
+      redirect_uri: "postmessage",
+      grant_type: "authorization_code"
+    })
     .then((res) => {
       // console.log(`statusCode: ${res.statusCode}`)
       console.log(res.data);
@@ -59,39 +52,27 @@ router.post('/postfe', (req, res) => {
         if (err) return console.log('Error loading client secret file:', err);
         // Authorize a client with credentials, then call the Gmail API.
         authorize(JSON.parse(content), addLabels);
-      })
-
-      setTimeout(() => fs.readFile('credentials.json', (err, content) => {
-        if (err) return console.log('Error loading client secret file:', err);
-        // Authorize a client with credentials, then call the Gmail API.
-        authorize(JSON.parse(content), getLabels);
-      }), 1000);
-
-      setTimeout(() => fs.readFile('credentials.json', (err, content) => {
-        if (err) return console.log('Error loading client secret file:', err);
-        // Authorize a client with credentials, then call the Gmail API.
-        authorize(JSON.parse(content), getMessageIds);
-      }), 2000);
+      });
 
       setTimeout(() => fs.readFile('credentials.json', (err, content) => {
         if (err) return console.log('Error loading client secret file:', err);
         // Authorize a client with credentials, then call the Gmail API.
         authorize(JSON.parse(content), listMessages);
-      }), 4000);
-
+      }), 3000);
+      
       /**
        * Create an OAuth2 client with the given credentials, and then execute the
        * given callback function.
        * @param {Object} credentials The authorization client credentials.
        * @param {function} callback The callback to call with the authorized client.
       */
-
+      
       function authorize(credentials, callback) {
-        const { client_secret, client_id, redirect_uris } = credentials.web;
+        const {client_secret, client_id, redirect_uris} = credentials.web;
         const oAuth2Client = new google.auth.OAuth2(
           client_id, client_secret, redirect_uris[1]
         );
-
+      
         oAuth2Client.setCredentials(token);
         callback(oAuth2Client);
 
@@ -100,9 +81,10 @@ router.post('/postfe', (req, res) => {
       //test
       // Adds tagger_Labels to user's Gmail account.
       function addLabels(auth) {
-        const gmail = google.gmail({ version: 'v1', auth });
-        let taggerLabels = ["tagger_Finance", "tagger_Entertainment", "tagger_Productivity", "tagger_Events", "tagger_Travel", "tagger_Shopping", "tagger_Social", "tagger_Other"]
+        const gmail = google.gmail({version: 'v1', auth});
 
+        let taggerLabels = ["tagger_Finance", "tagger_Entertainment", "tagger_Productivity", "tagger_Events", "tagger_Travel", "tagger_Shopping", "tagger_Social", "tagger_Other"]
+        
         taggerLabels.map(label => {
           gmail.users.labels.create(
             {
@@ -112,249 +94,240 @@ router.post('/postfe', (req, res) => {
                 labelListVisibility: "labelHide",
                 messageListVisibility: "hide"
               }
-
+              
             }, (err, res) => {
               console.log('test', res);
               console.log('testerror', err);
             })
-
         })
-
       }
 
-      function getLabels(auth) {
-        const gmail = google.gmail({ version: 'v1', auth });
 
-        gmail.users.labels.list(
-          {
-            userId: 'me'
-          }, (err, res) => {
-            if (err) return console.log(err);
-            responseLabels = res.data.labels;
-            // console.log(responseLabels);
-          })
-          
-      }
-
-      function getMessageIds(auth) {
-        const gmail = google.gmail({ version: 'v1', auth });
+        function listMessages(auth) {
+        const gmail = google.gmail({version: 'v1', auth});
 
         gmail.users.messages.list({
           userId: 'me',
         }, (err, res) => {
           if (err) return console.log('The API returned an error: ' + err);
-          messages = res.data.messages;
-          console.log(messages);
-        })
-        
-      }
+          const messages = res.data.messages;
+          if (messages.length) {
+            messages.forEach((message) => {
+              gmail.users.messages.get({
+                userId: 'me',
+                id: message.id,
+              }, (err, res) => {
+                // console.log(`\n ******************* \n ${res.data.id} \n ******************* \n`);
+                // console.log(Buffer.from(res.data.payload.parts[0].body.data, 'base64').toString());
+                // console.log(res.data.id);
 
-      function listMessages(auth) {
-        const gmail = google.gmail({ version: 'v1', auth });
+                // if(res.data.payload.headers[0])
+                let sender = res.data.payload.headers.find(sender => sender.name === 'From');
+                // console.log('****** sender ******', sender.value);
+              
+                let subject = res.data.payload.headers.find(subject => subject.name === "Subject");
+                // console.log('****** subject ******', subject.value);
 
-        if (messages.length) {
-          messages.forEach((message) => {
-            gmail.users.messages.get({
-              userId: 'me',
-              id: message.id,
-            }, (err, res) => {
-              if (err) return console.log(err);
-              let payload = res.data.payload
-              let idPlaceHolder = res.data.id;
-              // console.log(`\n ******************* \n ${res.data.id} \n ******************* \n`);
-              // console.log(Buffer.from(res.data.payload.parts[0].body.data, 'base64').toString());
-              // console.log(res.data.id);
+                let message = Buffer.from(res.data.payload.parts[0].body.data, 'base64').toString();
 
-              // if(res.data.payload.headers[0])
-              let sender = payload.headers.find(sender => sender.name === 'From');
-              // console.log('****** sender ******', sender.value);
-
-              let subject = payload.headers.find(subject => subject.name === "Subject");
-              // console.log('****** subject ******', subject.value);
-
-
-              if (payload.parts !== undefined) {
-                let message = Buffer.from(payload.parts[0].body.data, 'base64').toString();
+                let dsObject = {
+                  sender : sender.value,
+                  id : res.data.id,
+                  subject : subject.value,
+                  message : "You've just won 1 million dollars!"
+                }
                 
-                http.post('http://tagged.us-east-2.elasticbeanstalk.com/api/tags', {
-                  sender: sender.value,
-                  id: idPlaceHolder,
-                  subject: subject.value,
-                  message: message,
-                 
-
-                })
-
+                if(res.data.payload.parts !== undefined) {
+                  let idPlaceHolder = res.data.id;
+                  axios.post('http://tags2.us-east-2.elasticbeanstalk.com/api/tags', {
+                    sender : sender.value,
+                    id : res.data.id,
+                    subject : subject.value,
+                    message : message
+                  })
+                  
                   .then((res) => {
                     console.log(idPlaceHolder)
                     console.log(res.data.tag);
-                    let dataTag = res.data.tag;
 
-
-
-                    dataTag.forEach(tag => {
-
-
-
-                      if (tag === "Finance") {
-                        let finance = responseLabels.find(finance => finance.name === 'tagger_Finance')
+                    if(res.data.tag === "Finance") {
+                      gmail.users.labels.list({
+                        userId: 'me'
+                      }, (err, res) => {
+                        let finance = res.data.labels.find(finance => finance.name === 'tagger_Finance')
                         gmail.users.messages.modify({
                           userId: 'me',
                           id: idPlaceHolder,
-                          resource:
+                          resource: 
                           {
                             "addLabelIds": [
                               finance.id
                             ]
                           }
                         }), (err, res) => {
-                          if (err) return console.log(err);
                           console.log(res)
                         }
-                      }
+                      })
+                    }
 
-                      if (tag === "Entertainment") {
-                        let entertainment = responseLabels.find(entertainment => entertainment.name === 'tagger_Entertainment')
+                    if(res.data.tag === "Entertainment") {
+                      gmail.users.labels.list({
+                        userId: 'me'
+                      }, (err, res) => {
+                        let entertainment = res.data.labels.find(entertainment => entertainment.name === 'tagger_Entertainment')
                         gmail.users.messages.modify({
                           userId: 'me',
                           id: idPlaceHolder,
-                          resource:
+                          resource: 
                           {
                             "addLabelIds": [
                               entertainment.id
                             ]
                           }
                         }), (err, res) => {
-                          if (err) return console.log(err);
                           console.log(res)
                         }
-                      }
+                      })
+                    }
 
-                      if (tag === "Productivity") {
-                        let productivity = responseLabels.find(productivity => productivity.name === 'tagger_Productivity')
+                    if(res.data.tag === "Productivity") {
+                      gmail.users.labels.list({
+                        userId: 'me'
+                      }, (err, res) => {
+                        let productivity = res.data.labels.find(productivity => productivity.name === 'tagger_Productivity')
                         gmail.users.messages.modify({
                           userId: 'me',
                           id: idPlaceHolder,
-                          resource:
+                          resource: 
                           {
                             "addLabelIds": [
                               productivity.id
                             ]
                           }
                         }), (err, res) => {
-                          if (err) return console.log(err);
                           console.log(res)
                         }
-                      }
+                      })
+                    }
 
-                      if (tag === "Events") {
-                        let events = responseLabels.find(events => events.name === 'tagger_Events')
+                    if(res.data.tag === "Events") {
+                      gmail.users.labels.list({
+                        userId: 'me'
+                      }, (err, res) => {
+                        let events = res.data.labels.find(events => events.name === 'tagger_Events')
                         gmail.users.messages.modify({
                           userId: 'me',
                           id: idPlaceHolder,
-                          resource:
+                          resource: 
                           {
                             "addLabelIds": [
                               events.id
                             ]
                           }
                         }), (err, res) => {
-                          if (err) return console.log(err);
                           console.log(res)
                         }
-                      }
+                      })
+                    }
 
-                      if (tag === "Travel") {
-                        let travel = responseLabels.find(travel => travel.name === 'tagger_Travel')
+                    if(res.data.tag === "Travel") {
+                      gmail.users.labels.list({
+                        userId: 'me'
+                      }, (err, res) => {
+                        let travel = res.data.labels.find(travel => travel.name === 'tagger_Travel')
                         gmail.users.messages.modify({
                           userId: 'me',
                           id: idPlaceHolder,
-                          resource:
+                          resource: 
                           {
                             "addLabelIds": [
                               travel.id
                             ]
                           }
                         }), (err, res) => {
-                          if (err) return console.log(err);
                           console.log(res)
                         }
-                      }
+                      })
+                    }
 
-                      if (tag === "Shopping") {
-                        let shopping = responseLabels.find(shopping => shopping.name === 'tagger_Shopping')
+                    if(res.data.tag === "Shopping") {
+                      gmail.users.labels.list({
+                        userId: 'me'
+                      }, (err, res) => {
+                        let shopping = res.data.labels.find(shopping => shopping.name === 'tagger_Shopping')
                         gmail.users.messages.modify({
                           userId: 'me',
                           id: idPlaceHolder,
-                          resource:
+                          resource: 
                           {
                             "addLabelIds": [
                               shopping.id
                             ]
                           }
                         }), (err, res) => {
-                          if (err) return console.log(err);
                           console.log(res)
                         }
-                      }
+                      })
+                    }
 
-                      if (tag === "Social") {
-                        let social = responseLabels.find(social => social.name === 'tagger_Social')
+                    if(res.data.tag === "Social") {
+                      gmail.users.labels.list({
+                        userId: 'me'
+                      }, (err, res) => {
+                        let social = res.data.labels.find(social => social.name === 'tagger_Social')
                         gmail.users.messages.modify({
                           userId: 'me',
                           id: idPlaceHolder,
-                          resource:
+                          resource: 
                           {
                             "addLabelIds": [
                               social.id
                             ]
                           }
                         }), (err, res) => {
-                          if (err) return console.log(err);
                           console.log(res)
                         }
-                      }
+                      })
+                    }
 
-                      if (tag === "Other") {
-                        let other = responseLabels.find(other => other.name === 'tagger_Other')
+                    if(res.data.tag === "Other") {
+                      gmail.users.labels.list({
+                        userId: 'me'
+                      }, (err, res) => {
+                        let other = res.data.labels.find(other => other.name === '9823fnb829fb')
                         gmail.users.messages.modify({
                           userId: 'me',
                           id: idPlaceHolder,
-                          resource:
+                          resource: 
                           {
                             "addLabelIds": [
                               other.id
                             ]
                           }
                         }), (err, res) => {
-                          if (err) return console.log(err);
                           console.log(res)
                         }
-
-
-                      }
-
-                    })
-
+                      })
+                    }
 
                   })
                   .catch((error) => {
                     console.error(error)
                   })
-              }
+                }
+              })
             });
-          });
-        } else {
-          console.log('No messages found.');
-        }
-
-
-
+          } else {
+            console.log('No messages found.');
+          }
+        })
+        
+        
       }
-    })
-    .catch((error) => {
-      console.error(error)
-    })
+      })
+      .catch((error) => {
+        console.error(error)
+      })
 })
 
 
@@ -376,181 +349,9 @@ router.post('/postfe', (req, res) => {
 
 // ************* PAST CODE TO BE USED ONLY AS REFERENCE *****************
 
-
-// if(tag === "Entertainment") {
-//   gmail.users.labels.list({
-//     userId: 'me'
-//   }, (err, res) => {
-//     if (err) return console.log(err);
-//     let entertainment = res.data.labels.find(entertainment => entertainment.name === 'tagger_Entertainment')
-//     gmail.users.messages.modify({
-//       userId: 'me',
-//       id: idPlaceHolder,
-//       resource: 
-//       {
-//         "addLabelIds": [
-//           entertainment.id
-//         ]
-//       }
-//     }), (err, res) => {
-//       if (err) return console.log(err);
-//       console.log(res)
-//     }
-//   })
-
-// }
-
-// if(tag === "Productivity") {
-//   gmail.users.labels.list({
-//     userId: 'me'
-//   }, (err, res) => {
-//     if (err) return console.log(err);
-//     let productivity = res.data.labels.find(productivity => productivity.name === 'tagger_Productivity')
-//     gmail.users.messages.modify({
-//       userId: 'me',
-//       id: idPlaceHolder,
-//       resource: 
-//       {
-//         "addLabelIds": [
-//           productivity.id
-//         ]
-//       }
-//     }), (err, res) => {
-//       if (err) return console.log(err);
-//       console.log(res)
-//     }
-//   })
-
-// }
-
-// if(tag === "Events") {
-//   gmail.users.labels.list({
-//     userId: 'me'
-//   }, (err, res) => {
-//     if (err) return console.log(err);
-//     let events = res.data.labels.find(events => events.name === 'tagger_Events')
-//     gmail.users.messages.modify({
-//       userId: 'me',
-//       id: idPlaceHolder,
-//       resource: 
-//       {
-//         "addLabelIds": [
-//           events.id
-//         ]
-//       }
-//     }), (err, res) => {
-//       if (err) return console.log(err);
-//       console.log(res)
-//     }
-//   })
-
-// }
-
-// if(tag === "Travel") {
-//   gmail.users.labels.list({
-//     userId: 'me'
-//   }, (err, res) => {
-//     if (err) return console.log(err);
-//     let travel = res.data.labels.find(travel => travel.name === 'tagger_Travel')
-//     gmail.users.messages.modify({
-//       userId: 'me',
-//       id: idPlaceHolder,
-//       resource: 
-//       {
-//         "addLabelIds": [
-//           travel.id
-//         ]
-//       }
-//     }), (err, res) => {
-//       if (err) return console.log(err);
-//       console.log(res)
-//     }
-//   })
-
-// }
-
-// if(tag === "Shopping") {
-//   gmail.users.labels.list({
-//     userId: 'me'
-//   }, (err, res) => {
-//     if (err) return console.log(err);
-//     let shopping = res.data.labels.find(shopping => shopping.name === 'tagger_Shopping')
-//     gmail.users.messages.modify({
-//       userId: 'me',
-//       id: idPlaceHolder,
-//       resource: 
-//       {
-//         "addLabelIds": [
-//           shopping.id
-//         ]
-//       }
-//     }), (err, res) => {
-//       if (err) return console.log(err);
-//       console.log(res)
-//     }
-//   })
-
-// }
-
-// if(tag === "Social") {
-//   gmail.users.labels.list({
-//     userId: 'me'
-//   }, (err, res) => {
-//     if (err) return console.log(err);
-//     let social = res.data.labels.find(social => social.name === 'tagger_Social')
-//     gmail.users.messages.modify({
-//       userId: 'me',
-//       id: idPlaceHolder,
-//       resource: 
-//       {
-//         "addLabelIds": [
-//           social.id
-//         ]
-//       }
-//     }), (err, res) => {
-//       if (err) return console.log(err);
-//       console.log(res)
-//     }
-//   })
-
-// }
-
-// else {
-//   gmail.users.labels.list({
-//     userId: 'me'
-//   }, (err, res) => {
-//     if (err) return console.log(err);
-//     let other = res.data.labels.find(other => other.name === 'tagger_Other')
-//     gmail.users.messages.modify({
-//       userId: 'me',
-//       id: idPlaceHolder,
-//       resource: 
-//       {
-//         "addLabelIds": [
-//           other.id
-//         ]
-//       }
-//     }), (err, res) => {
-//       if (err) return console.log(err);
-//       console.log(res)
-//     }
-//   })
-
-// }
-
-
-
-
-
-
-
-
-
-
-
 // if(res.data.tag === "Finance") {
 //   // gmail.users.labels.get({
-
+    
 //   // })
 //   gmail.users.messages.modify({
 //     userId: 'me',
@@ -683,25 +484,25 @@ router.post('/postfe', (req, res) => {
 //     // Authorize a client with credentials, then call the Gmail API.
 //     authorize(JSON.parse(content), listMessages);
 //   });
-
+  
 //   /**
 //    * Create an OAuth2 client with the given credentials, and then execute the
 //    * given callback function.
 //    * @param {Object} credentials The authorization client credentials.
 //    * @param {function} callback The callback to call with the authorized client.
 //   */
-
+  
 //   function authorize(credentials, callback) {
 //     const {client_secret, client_id, redirect_uris} = credentials.installed;
 //     const oAuth2Client = new google.auth.OAuth2(
 //       client_id, client_secret, redirect_uris[3]
 //     );
-
+  
 //     oAuth2Client.setCredentials(token);
 //     callback(oAuth2Client);
 
 //   }
-
+  
 //   function listMessages(auth) {
 //     const gmail = google.gmail({version: 'v1', auth});
 //     gmail.users.messages.list({
@@ -722,7 +523,7 @@ router.post('/postfe', (req, res) => {
 //             // if(res.data.payload.headers[0])
 //             let sender = res.data.payload.headers.find(sender => sender.name === 'From');
 //             // console.log('****** sender ******', sender.value);
-
+          
 //             let subject = res.data.payload.headers.find(subject => subject.name === "Subject");
 //             // console.log('****** subject ******', subject.value);
 
@@ -737,7 +538,7 @@ router.post('/postfe', (req, res) => {
 //               // subject : subject.value,
 //               message : message
 //             }
-
+            
 //             // if(res.data.payload.parts != undefined) {
 //               // console.log(dsObject);
 //             // }
@@ -772,14 +573,14 @@ router.post('/postfe', (req, res) => {
 //     "authoization_code"
 //   );
 //   let code = '4/twFekyhbFcFe7sHItMmGN0Z6nYdyXBxDuN1LhyeToHap-BIVitV9LCRRh_ZcfTm-lYJb-djHXPE6RxaeY4Q7C3A'
-
+  
 //   const {tokens} = oauth2Client.getToken(code)
 //   console.log(tokens);
 //   oauth2Client.setCredentials(tokens);
 // })
 
 // router.post('/authCodeTest2', (req, res) => {
-
+  
 //   let code = req.body.code;
 //   console.log("code", code);
 
@@ -931,19 +732,19 @@ router.post('/postfe', (req, res) => {
 //     // Authorize a client with credentials, then call the Gmail API.
 //     authorize(JSON.parse(content), listMessages);
 //   });
-
+  
 //   /**
 //    * Create an OAuth2 client with the given credentials, and then execute the
 //    * given callback function.
 //    * @param {Object} credentials The authorization client credentials.
 //    * @param {function} callback The callback to call with the authorized client.
 //   */
-
+  
 //   function authorize(credentials, callback) {
 //     const {client_secret, client_id, redirect_uris} = credentials.installed;
 //     const oAuth2Client = new google.auth.OAuth2(
 //         client_id, client_secret, redirect_uris[3], {"grant-type" : "authorization_code"});
-
+  
 //     // Check if we have previously stored a token.
 //     // fs.readFile(TOKEN_PATH, (err, token) => {
 //     //   if (err) return getNewToken(oAuth2Client, callback);
@@ -951,7 +752,7 @@ router.post('/postfe', (req, res) => {
 //       callback(oAuth2Client);
 //     // });
 //   }
-
+  
 //   /**
 //    * Get and store new token after prompting for user authorization, and then
 //    * execute the given callback with the authorized OAuth2 client.
@@ -983,7 +784,7 @@ router.post('/postfe', (req, res) => {
 //   //     });
 //   //   });
 //   // }
-
+  
 //   function listMessages(auth) {
 //     const gmail = google.gmail({version: 'v1', auth});
 //     gmail.users.messages.list({
@@ -1020,19 +821,19 @@ router.post('/postfe', (req, res) => {
 //     // Authorize a client with credentials, then call the Gmail API.
 //     authorize(JSON.parse(content), listMessages);
 //   });
-
+  
 //   /**
 //    * Create an OAuth2 client with the given credentials, and then execute the
 //    * given callback function.
 //    * @param {Object} credentials The authorization client credentials.
 //    * @param {function} callback The callback to call with the authorized client.
 //   */
-
+  
 //   function authorize(credentials, callback) {
 //     const {client_secret, client_id, redirect_uris} = credentials.installed;
 //     const oAuth2Client = new google.auth.OAuth2(
 //         client_id, client_secret, redirect_uris[0]);
-
+  
 //     // Check if we have previously stored a token.
 //     fs.readFile(TOKEN_PATH, (err, token) => {
 //       if (err) return getNewToken(oAuth2Client, callback);
@@ -1040,7 +841,7 @@ router.post('/postfe', (req, res) => {
 //       callback(oAuth2Client);
 //     });
 //   }
-
+  
 //   /**
 //    * Get and store new token after prompting for user authorization, and then
 //    * execute the given callback with the authorized OAuth2 client.
@@ -1071,7 +872,7 @@ router.post('/postfe', (req, res) => {
 //       });
 //     });
 //   }
-
+  
 //   function listMessages(auth) {
 //     const gmail = google.gmail({version: 'v1', auth});
 //     gmail.users.messages.list({
@@ -1112,7 +913,7 @@ router.post('/postfe', (req, res) => {
 // END TEST GMAIL API CALL *********
 
 // router.post("/", (req, res) => {
-
+  
 
 // //   /******POST REQUEST OPTION 1 *******/
 
@@ -1135,7 +936,7 @@ router.post('/postfe', (req, res) => {
 //      subject: "See Small Think Big",
 //      message: "Focus on what is directly ahead of you"
 //    }
-
+  
 //   // An object of options to indicate where to post to
 
 //   console.log("hello");
@@ -1205,7 +1006,7 @@ router.post('/postfe', (req, res) => {
 // //   });
 
 
-
+  
 // /****** END ******/
 
 // // ****** GOOGLE API POST  *******/
