@@ -15,7 +15,7 @@ module.exports = {
   getNameFromAddress,
   addEmail,
   deleteAllEmailsByUser,
-  updateEmail,
+  updateEmailById,
   deleteEmail,
   getTagsForMessage,
   getMessageTagsFromUser,
@@ -35,16 +35,16 @@ function getEmailList(query, label) {
       .limit(query.limit)
       .offset(query.skip)
       .orderBy('date', "desc")
-      .where('labels', 'ilike', `%${label}%`)
+      .where('labels', 'like', `%${label}%`)
       .select('id', 'name',
-          'subject', 'date', 'email_body_text')
+          'subject', 'date', 'email_body_text', 'read')
 
 }
 
 function getEmailCountByLabelForUser(label, userId) {
   return db("emails")
     .where("user_id", userId)
-    .where('labels', 'ilike', `%${label}%`)
+    .where('labels', 'like', `%${label}%`)
     .count("id").first();
 }
 
@@ -75,7 +75,7 @@ function searchByAny(query, column, keyword) {
   return db('emails')
       .limit(query.limit)
       .offset(query.skip)
-      .where( column, 'ilike', `%${keyword}%`)
+      .where( column, 'like', `%${keyword}%`)
       .select('id', 'name',
           'subject', 'date', 'email_body_text')
       .orderBy('date', "desc")
@@ -85,11 +85,11 @@ function searchAll(query, keyword) {
   return db('emails')
       .limit(query.limit)
       .offset(query.skip)
-      .where( 'from' , 'ilike', `%${keyword}%`)
-      .orWhere('name','ilike', `%${keyword}%` )
-      .orWhere('to','ilike', `%${keyword}%` )
-      .orWhere('subject','ilike', `%${keyword}%` )
-      .orWhere('email_body_text','ilike', `%${keyword}%` )
+      .where( 'from' , 'like', `%${keyword}%`)
+      .orWhere('name','like', `%${keyword}%` )
+      .orWhere('to','like', `%${keyword}%` )
+      .orWhere('subject','like', `%${keyword}%` )
+      .orWhere('email_body_text','like', `%${keyword}%` )
       .select('id', 'name',
           'subject', 'date', 'email_body_text')
       .orderBy('date', "desc")
@@ -97,7 +97,7 @@ function searchAll(query, keyword) {
 
 function searchByCount(column, keyword) {
   return db("emails")
-    .where(column, "ilike", `%${keyword}%`)
+    .where(column, "like", `%${keyword}%`)
     .count("id")
     .first();
 }
@@ -138,10 +138,9 @@ function emails(id) {
     .where("user_id", id);
 }
 
-function updateEmail(userId, uid, changes) {
+function updateEmailById(id, changes) {
   return db("emails")
-    .where("user_id", userId)
-    .andWhere("uid", uid)
+    .where("id", id)
     .update(changes);
 }
 

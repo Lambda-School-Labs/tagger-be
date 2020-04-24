@@ -5,7 +5,7 @@ exports.seed = function(knex) {
     .then(function () {
       // Inserts seed entries
       return knex('users').insert([
-        {id: 1, email: 'rowValue1'},
+        {id: 1, email: 'taggerlabs20@gmail.com'}, // TEMP USER
       ]);
     });
 };

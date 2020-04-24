@@ -16,7 +16,7 @@ async function getLastMessageByUserId(taggerUserId) {
 async function getLatestMail(imapUser, imapPassword, imapServer) {
   const taggerUserId = 1; // TEMP SINGLE USER
   const lastMessage = await getLastMessageByUserId(taggerUserId);
-  const lastMessageId = lastMessage.uid;
+  const lastMessageId = lastMessage ? lastMessage.uid : 0;
   
   const imapConnection = await imapSimple.connect({
     imap: {
@@ -33,7 +33,7 @@ async function getLatestMail(imapUser, imapPassword, imapServer) {
 
   await imapConnection.openBox("[Gmail]/All Mail");
 
-  const searchCriteria = ["ALL", ["UID", lastMessageId + ":*"]];
+  const searchCriteria = (lastMessageId === 0) ? ["ALL"] : ["ALL", ["UID", lastMessageId + ":*"]];
   const fetchOptions = { bodies: "" }; // see https://github.com/mscdex/node-imap
 
   const searchResults = await imapConnection.search(

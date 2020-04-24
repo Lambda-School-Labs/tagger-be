@@ -23,6 +23,18 @@ http.getMaxRPS();
 
 // ********** NEW FRONT END ENDPOINTS **********
 
+// UPDATE EMAIL 
+router.put("/email/read/:id", (req, res) => {
+  const id = req.params.id;
+  const changes = { read: true };
+  Messages.updateEmailById(id, changes)
+    .then(() => {
+      res.status(200);
+    })
+    .catch((error) => res.send(error));
+});
+
+// GET EMAIL
 router.get('/email/:id', (req,res) => {
   const id = req.params.id;
   Messages.getEmail(id)
