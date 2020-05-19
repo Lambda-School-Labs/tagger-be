@@ -26,6 +26,16 @@ module.exports = {
     }
   },
 
+
+/**
+ * Currently storing the emails in the heroku database witch process.env.DATABASE_URL
+ * Need to store it locally on the user machine
+ * take Development code from ln2{... ln27} and replace ln29{...ln44}
+ * do not overwrite testing scripts
+ * Set up local database to be separate from development emails.db3
+ * Give clear nomenclature for both files
+ * 
+ */
   production: {
     client: "pg",
     connection: process.env.DATABASE_URL,
